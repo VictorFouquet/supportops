@@ -15,3 +15,4 @@ with a new one rather than rewriting history.
 | 0002 | Node version policy: current LTS, floor at 20  | Accepted |
 | 0003 | ESM-first toolchain and formatting conventions | Accepted |
 | 0004 | Workspace TypeScript and lint conventions      | Accepted |
+| 0005 | Branch strategy and continuous integration     | Accepted |
