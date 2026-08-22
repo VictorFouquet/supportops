@@ -1,6 +1,6 @@
 import { Module, type DynamicModule } from '@nestjs/common';
+import { AuthModule as AuthCoreModule } from '@supportops/auth';
 import type { AppConfig } from '@supportops/config';
-import { AuthModule } from '../auth/auth.module.js';
 import { OrganizationsController } from './organizations.controller.js';
 import { OrganizationsService } from './organizations.service.js';
 
@@ -9,7 +9,7 @@ export class OrganizationsModule {
   static register(config: AppConfig): DynamicModule {
     return {
       module: OrganizationsModule,
-      imports: [AuthModule.register(config)],
+      imports: [AuthCoreModule.register({ secret: config.JWT_SECRET, expiresIn: '1h' })],
       controllers: [OrganizationsController],
       providers: [OrganizationsService],
     };
