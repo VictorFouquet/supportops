@@ -3,6 +3,7 @@ import { NestFactory } from '@nestjs/core';
 import { loadConfig } from '@supportops/config';
 import { prisma } from '@supportops/db';
 import { AppModule } from '../src/app.module.js';
+import { DomainExceptionFilter } from '../src/common/domain-exception.filter.js';
 
 export interface TestContext {
   app: INestApplication;
@@ -16,6 +17,7 @@ export async function buildTestApp(): Promise<TestContext> {
   app.useGlobalPipes(
     new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
   );
+  app.useGlobalFilters(new DomainExceptionFilter());
   await app.init();
   return { app, prisma };
 }
