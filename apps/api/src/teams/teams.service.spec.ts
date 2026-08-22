@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { prisma, type Role } from '@supportops/db';
 import { resetDb } from '../../test/db.js';
 import { TeamsService } from './teams.service.js';
-import { ConflictError, NotFoundError } from '../common/domain-errors.js';
+import { ConflictError, ForbiddenActionError, NotFoundError } from '../common/domain-errors.js';
 
 const service = new TeamsService();
 
@@ -55,5 +55,57 @@ describe('TeamsService', () => {
     expect(await prisma.team.findFirst({ where: { id: team.id } })).toBeNull();
     const after = await prisma.user.findFirstOrThrow({ where: { id: member.id } });
     expect(after.teamId).toBeNull();
+  });
+});
+
+describe('TeamsService.manageMembers', () => {
+  it('adds and removes members', async () => {
+    const acme = await org();
+    const lead = await user(acme.id, 'lead@acme.test');
+    const team = await service.create(acme.id, { name: 'Support', leadUserId: lead.id });
+    const member = await user(acme.id, 'm@acme.test', 'AGENT');
+
+    await service.manageMembers(acme.id, { userId: lead.id, role: 'ADMIN' }, team.id, {
+      add: [member.id],
+    });
+    expect((await prisma.user.findFirstOrThrow({ where: { id: member.id } })).teamId).toBe(team.id);
+
+    await service.manageMembers(acme.id, { userId: lead.id, role: 'ADMIN' }, team.id, {
+      remove: [member.id],
+    });
+    expect((await prisma.user.findFirstOrThrow({ where: { id: member.id } })).teamId).toBeNull();
+  });
+
+  it('lets a team lead manage only the team they lead', async () => {
+    const acme = await org();
+    const lead = await user(acme.id, 'lead@acme.test');
+    const otherLead = await user(acme.id, 'other-lead@acme.test');
+    const mine = await service.create(acme.id, { name: 'Mine', leadUserId: lead.id });
+    const theirs = await service.create(acme.id, { name: 'Theirs', leadUserId: otherLead.id });
+    const member = await user(acme.id, 'm@acme.test', 'AGENT');
+
+    await expect(
+      service.manageMembers(acme.id, { userId: lead.id, role: 'TEAM_LEAD' }, mine.id, {
+        add: [member.id],
+      }),
+    ).resolves.toBeUndefined();
+    await expect(
+      service.manageMembers(acme.id, { userId: lead.id, role: 'TEAM_LEAD' }, theirs.id, {
+        add: [member.id],
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenActionError);
+  });
+
+  it('rejects a member from another organization', async () => {
+    const acme = await org('acme');
+    const other = await org('other');
+    const lead = await user(acme.id, 'lead@acme.test');
+    const team = await service.create(acme.id, { name: 'Support', leadUserId: lead.id });
+    const outsider = await user(other.id, 'x@other.test', 'AGENT');
+    await expect(
+      service.manageMembers(acme.id, { userId: lead.id, role: 'ADMIN' }, team.id, {
+        add: [outsider.id],
+      }),
+    ).rejects.toBeInstanceOf(NotFoundError);
   });
 });

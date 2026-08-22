@@ -83,4 +83,46 @@ describe('/teams', () => {
       .send({ name: 'Support', leadUserId: lead.id });
     expect(res.status).toBe(409);
   });
+
+  it('confines a team lead to their own team over HTTP', async () => {
+    const { orgId } = await seedOwner();
+    const _lead = await prisma.user.create({
+      data: {
+        orgId,
+        email: 'lead@acme.test',
+        name: 'Lead',
+        role: 'TEAM_LEAD',
+        passwordHash: await hashPassword('s3cret-password'),
+      },
+    });
+    const otherLead = await prisma.user.create({
+      data: {
+        orgId,
+        email: 'other-lead@acme.test',
+        name: 'Other',
+        role: 'TEAM_LEAD',
+        passwordHash: await hashPassword('s3cret-password'),
+      },
+    });
+    const theirs = await prisma.team.create({
+      data: { orgId, name: 'Theirs', leadUserId: otherLead.id },
+    });
+    const member = await prisma.user.create({
+      data: {
+        orgId,
+        email: 'm@acme.test',
+        name: 'M',
+        role: 'AGENT',
+        passwordHash: await hashPassword('s3cret-password'),
+      },
+    });
+    const login = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ orgSlug: 'acme', email: 'lead@acme.test', password: 's3cret-password' });
+    const res = await request(app.getHttpServer())
+      .patch(`/teams/${theirs.id}/members`)
+      .set('Authorization', `Bearer ${login.body.accessToken}`)
+      .send({ add: [member.id] });
+    expect(res.status).toBe(403);
+  });
 });
