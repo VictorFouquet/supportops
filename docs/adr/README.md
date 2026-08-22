@@ -19,3 +19,5 @@ with a new one rather than rewriting history.
 | 0006 | Prisma commands receive DATABASE_URL explicitly | Accepted |
 | 0007 | Authentication strategy                         | Accepted |
 | 0008 | API framework and authorization guards          | Accepted |
+| 0009 | Authorization model and rule placement          | Accepted |
+| 0010 | List and pagination convention                  | Accepted |
