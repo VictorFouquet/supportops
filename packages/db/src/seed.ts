@@ -1,7 +1,12 @@
 import { PrismaClient } from '@prisma/client';
+import { hash } from '@node-rs/argon2';
 
 /** Idempotent: safe to run repeatedly against the same database. */
 export async function seed(prisma: PrismaClient): Promise<void> {
+  // Shared password for every seeded account in local development.
+  // Hashed with argon2id — the scheme @supportops/auth verifies against at login.
+  const DEV_PASSWORD = 'supportops-dev';
+
   const org = await prisma.organization.upsert({
     where: { slug: 'acme' },
     update: {},
@@ -16,7 +21,7 @@ export async function seed(prisma: PrismaClient): Promise<void> {
       email: 'owner@acme.test',
       name: 'Olivia Owner',
       role: 'OWNER',
-      passwordHash: 'seed-not-a-real-hash',
+      passwordHash: await hash(DEV_PASSWORD),
     },
   });
 
@@ -28,7 +33,7 @@ export async function seed(prisma: PrismaClient): Promise<void> {
       email: 'lead@acme.test',
       name: 'Leo Lead',
       role: 'TEAM_LEAD',
-      passwordHash: 'seed-not-a-real-hash',
+      passwordHash: await hash(DEV_PASSWORD),
     },
   });
 
@@ -47,7 +52,7 @@ export async function seed(prisma: PrismaClient): Promise<void> {
       name: 'Ada Agent',
       role: 'AGENT',
       teamId: team.id,
-      passwordHash: 'seed-not-a-real-hash',
+      passwordHash: await hash(DEV_PASSWORD),
     },
   });
 
