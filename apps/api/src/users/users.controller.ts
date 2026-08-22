@@ -25,6 +25,8 @@ import { CreateUserDto } from './dto/create-user.dto.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
 import { UpdateMeDto } from './dto/update-me.dto.js';
 import { ChangePasswordDto } from './dto/change-password.dto.js';
+import { SetRoleDto } from './dto/set-role.dto.js';
+import { AssignTeamDto } from './dto/assign-team.dto.js';
 import type { UserDto } from './dto/user.dto.js';
 
 @Controller('users')
@@ -80,6 +82,28 @@ export class UsersController {
     @Body() dto: UpdateUserDto,
   ): Promise<UserDto> {
     return this.users.updateProfile(orgId, id, dto);
+  }
+
+  @Patch(':id/role')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('OWNER', 'ADMIN')
+  setRole(
+    @CurrentUser() actor: AuthPrincipal,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: SetRoleDto,
+  ): Promise<UserDto> {
+    return this.users.setRole(actor.orgId, actor.role, id, dto.role);
+  }
+
+  @Patch(':id/team')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('OWNER', 'ADMIN')
+  assignTeam(
+    @CurrentOrg() orgId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AssignTeamDto,
+  ): Promise<UserDto> {
+    return this.users.assignTeam(orgId, id, dto.teamId);
   }
 
   @Delete(':id')

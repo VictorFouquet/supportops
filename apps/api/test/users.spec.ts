@@ -75,4 +75,22 @@ describe('/users', () => {
       .send({ orgSlug: 'acme', email: 'AGENT@acme.test', password: 'a-new-password' });
     expect(relogin.status).toBe(200);
   });
+
+  it('forbids an admin from granting the owner role (403)', async () => {
+    const { token, orgId } = await seedAndLogin('ADMIN');
+    const target = await prisma.user.create({
+      data: {
+        orgId,
+        email: 'target@acme.test',
+        name: 'Target',
+        role: 'AGENT',
+        passwordHash: await hashPassword('s3cret-password'),
+      },
+    });
+    const res = await request(app.getHttpServer())
+      .patch(`/users/${target.id}/role`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ role: 'OWNER' });
+    expect(res.status).toBe(403);
+  });
 });

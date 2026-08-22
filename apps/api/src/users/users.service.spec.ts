@@ -122,3 +122,63 @@ describe('UsersService cross-organization', () => {
     await expect(service.get(other.id, u.id)).rejects.toBeInstanceOf(NotFoundError);
   });
 });
+
+describe('UsersService.setRole', () => {
+  it('forbids a non-owner from granting the owner role', async () => {
+    const acme = await org();
+    const target = await user(acme.id, 'a@acme.test', 'AGENT');
+    await expect(service.setRole(acme.id, 'ADMIN', target.id, 'OWNER')).rejects.toBeInstanceOf(
+      ForbiddenActionError,
+    );
+  });
+
+  it('forbids a non-owner from changing a current owner', async () => {
+    const acme = await org();
+    const owner2 = await user(acme.id, 'o2@acme.test', 'OWNER');
+    await user(acme.id, 'o1@acme.test', 'OWNER'); // keep two owners
+    await expect(service.setRole(acme.id, 'ADMIN', owner2.id, 'ADMIN')).rejects.toBeInstanceOf(
+      ForbiddenActionError,
+    );
+  });
+
+  it('forbids demoting the last owner', async () => {
+    const acme = await org();
+    const owner = await user(acme.id, 'owner@acme.test', 'OWNER');
+    await expect(service.setRole(acme.id, 'OWNER', owner.id, 'ADMIN')).rejects.toBeInstanceOf(
+      ForbiddenActionError,
+    );
+  });
+
+  it('lets an admin change roles among non-owners', async () => {
+    const acme = await org();
+    const target = await user(acme.id, 'a@acme.test', 'AGENT');
+    const updated = await service.setRole(acme.id, 'ADMIN', target.id, 'TEAM_LEAD');
+    expect(updated.role).toBe('TEAM_LEAD');
+  });
+});
+
+describe('UsersService.assignTeam', () => {
+  it('assigns and clears a team', async () => {
+    const acme = await org();
+    const lead = await user(acme.id, 'lead@acme.test', 'TEAM_LEAD');
+    const team = await prisma.team.create({
+      data: { orgId: acme.id, name: 'Support', leadUserId: lead.id },
+    });
+    const member = await user(acme.id, 'm@acme.test', 'AGENT');
+    expect((await service.assignTeam(acme.id, member.id, team.id)).teamId).toBe(team.id);
+    expect((await service.assignTeam(acme.id, member.id, null)).teamId).toBeNull();
+  });
+
+  it('rejects a team from another organization', async () => {
+    const acme = await org('acme');
+    const other = await org('other');
+    const otherLead = await user(other.id, 'lead@other.test', 'TEAM_LEAD');
+    const otherTeam = await prisma.team.create({
+      data: { orgId: other.id, name: 'T', leadUserId: otherLead.id },
+    });
+    const member = await user(acme.id, 'm@acme.test', 'AGENT');
+    await expect(service.assignTeam(acme.id, member.id, otherTeam.id)).rejects.toBeInstanceOf(
+      NotFoundError,
+    );
+  });
+});

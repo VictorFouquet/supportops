@@ -99,6 +99,25 @@ export class UsersService {
     });
   }
 
+  async setRole(orgId: string, actorRole: Role, targetId: string, newRole: Role): Promise<UserDto> {
+    const target = await this.getRow(orgId, targetId);
+    if ((newRole === 'OWNER' || target.role === 'OWNER') && actorRole !== 'OWNER') {
+      throw new ForbiddenActionError('Only an owner may grant or change the owner role');
+    }
+    if (target.role === 'OWNER' && newRole !== 'OWNER') {
+      await this.assertNotLastOwner(orgId);
+    }
+    const user = await prisma.user.update({ where: { id: targetId }, data: { role: newRole } });
+    return mapUser(user);
+  }
+
+  async assignTeam(orgId: string, targetId: string, teamId: string | null): Promise<UserDto> {
+    await this.getRow(orgId, targetId);
+    if (teamId !== null) await this.assertTeamInOrg(orgId, teamId);
+    const user = await prisma.user.update({ where: { id: targetId }, data: { teamId } });
+    return mapUser(user);
+  }
+
   /** Fetch an organization-scoped row (with the hash) for internal use; 404 if absent. */
   private async getRow(orgId: string, id: string) {
     const user = await prisma.user.findFirst({ where: { id, orgId } });
