@@ -1,0 +1,197 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  TEAM_LEAD
+  AGENT
+
+  @@map("role")
+}
+
+enum TicketStatus {
+  OPEN
+  PENDING
+  RESOLVED
+  CLOSED
+
+  @@map("ticket_status")
+}
+
+enum TicketPriority {
+  LOW
+  NORMAL
+  HIGH
+  CRITICAL
+
+  @@map("ticket_priority")
+}
+
+enum AuthorType {
+  AGENT
+  CUSTOMER
+
+  @@map("author_type")
+}
+
+enum NotificationType {
+  TICKET_ASSIGNED
+  TICKET_COMMENTED
+
+  @@map("notification_type")
+}
+
+enum NotificationChannel {
+  EMAIL
+
+  @@map("notification_channel")
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+
+  @@map("notification_status")
+}
+
+model Organization {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  slug      String   @unique
+  timezone  String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  users         User[]
+  teams         Team[]
+  customers     Customer[]
+  tickets       Ticket[]
+  notifications Notification[]
+
+  @@map("organizations")
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  orgId        String   @map("org_id") @db.Uuid
+  email        String
+  name         String
+  role         Role
+  teamId       String?  @map("team_id") @db.Uuid
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization    Organization   @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  team            Team?          @relation("TeamMembers", fields: [teamId], references: [id])
+  ledTeams        Team[]         @relation("TeamLead")
+  assignedTickets Ticket[]       @relation("TicketAssignee")
+  notifications   Notification[]
+
+  @@unique([orgId, email])
+  @@index([orgId])
+  @@map("users")
+}
+
+model Team {
+  id         String   @id @default(uuid()) @db.Uuid
+  orgId      String   @map("org_id") @db.Uuid
+  name       String
+  leadUserId String   @map("lead_user_id") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  lead         User         @relation("TeamLead", fields: [leadUserId], references: [id])
+  members      User[]       @relation("TeamMembers")
+  tickets      Ticket[]
+
+  @@unique([orgId, name])
+  @@index([orgId])
+  @@map("teams")
+}
+
+model Customer {
+  id        String   @id @default(uuid()) @db.Uuid
+  orgId     String   @map("org_id") @db.Uuid
+  email     String
+  name      String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  tickets      Ticket[]
+
+  @@unique([orgId, email])
+  @@index([orgId])
+  @@map("customers")
+}
+
+model Ticket {
+  id          String         @id @default(uuid()) @db.Uuid
+  orgId       String         @map("org_id") @db.Uuid
+  customerId  String         @map("customer_id") @db.Uuid
+  assigneeId  String?        @map("assignee_id") @db.Uuid
+  teamId      String?        @map("team_id") @db.Uuid
+  subject     String
+  description String
+  status      TicketStatus   @default(OPEN)
+  priority    TicketPriority @default(NORMAL)
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  closedAt    DateTime?      @map("closed_at") @db.Timestamptz(6)
+
+  organization Organization    @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  customer     Customer        @relation(fields: [customerId], references: [id])
+  assignee     User?           @relation("TicketAssignee", fields: [assigneeId], references: [id])
+  team         Team?           @relation(fields: [teamId], references: [id])
+  comments     TicketComment[]
+
+  @@index([orgId])
+  @@index([orgId, status])
+  @@map("tickets")
+}
+
+model TicketComment {
+  id         String     @id @default(uuid()) @db.Uuid
+  ticketId   String     @map("ticket_id") @db.Uuid
+  authorType AuthorType @map("author_type")
+  authorId   String     @map("author_id") @db.Uuid
+  body       String
+  isInternal Boolean    @default(false) @map("is_internal")
+  createdAt  DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId])
+  @@map("ticket_comments")
+}
+
+model Notification {
+  id        String              @id @default(uuid()) @db.Uuid
+  orgId     String              @map("org_id") @db.Uuid
+  userId    String              @map("user_id") @db.Uuid
+  type      NotificationType
+  channel   NotificationChannel
+  payload   Json
+  status    NotificationStatus  @default(PENDING)
+  sentAt    DateTime?           @map("sent_at") @db.Timestamptz(6)
+  createdAt DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([userId])
+  @@map("notifications")
+}
