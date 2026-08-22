@@ -5,6 +5,7 @@ import { AuthModule } from './auth/auth.module.js';
 import { OrganizationsModule } from './organizations/organizations.module.js';
 import { CustomersModule } from './customers/customers.module.js';
 import { UsersModule } from './users/users.module.js';
+import { TeamsModule } from './teams/teams.module.js';
 
 @Module({})
 export class AppModule {
@@ -17,6 +18,7 @@ export class AppModule {
         OrganizationsModule.register(config),
         CustomersModule.register(config),
         UsersModule.register(config),
+        TeamsModule.register(config),
       ],
     };
   }
