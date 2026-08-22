@@ -130,8 +130,8 @@ to forget on a new route.
 In `docs/adr/README.md`, add to the table after the `0006` row:
 
 ```markdown
-| 0007 | Authentication strategy                         | Accepted |
-| 0008 | API framework and authorization guards          | Accepted |
+| 0007 | Authentication strategy | Accepted |
+| 0008 | API framework and authorization guards | Accepted |
 ```
 
 - [ ] **Step 4: Verify formatting and commit**
@@ -513,7 +513,10 @@ function contextFor(request: unknown, handler: () => void = () => {}): Execution
 }
 
 describe('JwtAuthGuard', () => {
-  const jwt = new JwtService({ secret: 'test-secret-at-least-16', signOptions: { expiresIn: '1h' } });
+  const jwt = new JwtService({
+    secret: 'test-secret-at-least-16',
+    signOptions: { expiresIn: '1h' },
+  });
   const guard = new JwtAuthGuard(jwt);
 
   it('attaches a principal for a valid bearer token', async () => {
@@ -1003,7 +1006,10 @@ import { resetDb } from '../../test/db.js';
 import { AuthService } from './auth.service.js';
 import { InvalidCredentialsError } from '../common/domain-errors.js';
 
-const jwt = new JwtService({ secret: 'test-secret-at-least-16-chars', signOptions: { expiresIn: '1h' } });
+const jwt = new JwtService({
+  secret: 'test-secret-at-least-16-chars',
+  signOptions: { expiresIn: '1h' },
+});
 const service = new AuthService(jwt);
 
 async function seedUser() {
@@ -1046,9 +1052,9 @@ describe('AuthService.login', () => {
 
   it('rejects an unknown email without revealing it', async () => {
     await seedUser();
-    await expect(service.login('acme', 'nobody@acme.test', 's3cret-password')).rejects.toBeInstanceOf(
-      InvalidCredentialsError,
-    );
+    await expect(
+      service.login('acme', 'nobody@acme.test', 's3cret-password'),
+    ).rejects.toBeInstanceOf(InvalidCredentialsError);
   });
 
   it('rejects an unknown organization', async () => {
@@ -1518,12 +1524,12 @@ import { verify } from '@node-rs/argon2';
 ```
 
 ```ts
-  it('hashes real, verifiable passwords for seeded accounts', async () => {
-    await seed(testPrisma);
-    const owner = await testPrisma.user.findFirstOrThrow({ where: { email: 'owner@acme.test' } });
-    expect(owner.passwordHash).toMatch(/^\$argon2id\$/);
-    expect(await verify(owner.passwordHash, 'supportops-dev')).toBe(true);
-  });
+it('hashes real, verifiable passwords for seeded accounts', async () => {
+  await seed(testPrisma);
+  const owner = await testPrisma.user.findFirstOrThrow({ where: { email: 'owner@acme.test' } });
+  expect(owner.passwordHash).toMatch(/^\$argon2id\$/);
+  expect(await verify(owner.passwordHash, 'supportops-dev')).toBe(true);
+});
 ```
 
 - [ ] **Step 4: Run to verify fail, then pass**
@@ -1570,10 +1576,10 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 In `.github/workflows/ci.yml`, extend the existing `env:` block on the `build` job so it reads:
 
 ```yaml
-    env:
-      TEST_DATABASE_URL: postgres://supportops:supportops@localhost:5432/supportops_test
-      JWT_SECRET: ci-only-secret-at-least-16-chars
-      REDIS_URL: redis://localhost:6379
+env:
+  TEST_DATABASE_URL: postgres://supportops:supportops@localhost:5432/supportops_test
+  JWT_SECRET: ci-only-secret-at-least-16-chars
+  REDIS_URL: redis://localhost:6379
 ```
 
 (No Redis service is needed yet — Phase 3 does not connect to Redis; the URL only satisfies config validation. The API test harness maps `DATABASE_URL` from `TEST_DATABASE_URL`.)
@@ -1638,10 +1644,9 @@ background processors. Turborepo builds packages before the apps that depend on 
 ## Request flow
 
 Every request follows one shape:
-
 ```
 
-Controller  →  Service  →  Prisma (@supportops/db)
+Controller → Service → Prisma (@supportops/db)
 
 ```
 
