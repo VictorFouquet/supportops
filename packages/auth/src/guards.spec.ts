@@ -42,6 +42,22 @@ describe('JwtAuthGuard', () => {
       guard.canActivate(contextFor({ headers: { authorization: 'Bearer garbage' } })),
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
+
+  it('accepts a lower-case bearer scheme', async () => {
+    const token = await jwt.signAsync({ sub: 'u1', org: 'o1', role: 'AGENT' });
+    const request: { headers: Record<string, string>; principal?: AuthPrincipal } = {
+      headers: { authorization: `bearer ${token}` },
+    };
+    await expect(guard.canActivate(contextFor(request))).resolves.toBe(true);
+    expect(request.principal).toEqual({ userId: 'u1', orgId: 'o1', role: 'AGENT' });
+  });
+
+  it('rejects a token whose claims are not all strings', async () => {
+    const token = await jwt.signAsync({ sub: 'u1', org: 1, role: 'AGENT' });
+    await expect(
+      guard.canActivate(contextFor({ headers: { authorization: `Bearer ${token}` } })),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
 });
 
 describe('RolesGuard', () => {
@@ -66,5 +82,11 @@ describe('RolesGuard', () => {
 
   it('allows any request when no roles are required', () => {
     expect(guard.canActivate(contextFor({ principal: undefined }))).toBe(true);
+  });
+
+  it('forbids when a role is required but no principal is present', () => {
+    expect(() => guard.canActivate(contextFor({ principal: undefined }, adminHandler))).toThrow(
+      ForbiddenException,
+    );
   });
 });
