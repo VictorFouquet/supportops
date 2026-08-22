@@ -69,17 +69,17 @@ cannot be removed"). We need one predictable, testable place for each kind.
   simplest thing that is fully testable.
 - **The permission matrix:**
 
-  | Endpoint | OWNER | ADMIN | TEAM_LEAD | AGENT |
-  |---|---|---|---|---|
-  | `GET /orgs/me` | yes | yes | yes | yes |
-  | `PATCH /orgs/me` | yes | yes | – | – |
-  | `GET /users`, `GET /users/:id` | yes | yes | yes | yes |
-  | `POST/PATCH/DELETE /users`, `/role`, `/team` | yes | yes | – | – |
-  | `GET /teams`, `GET /teams/:id` | yes | yes | yes | yes |
-  | `POST/DELETE /teams`, `PATCH` name/lead | yes | yes | – | – |
-  | `PATCH /teams/:id/members` | yes | yes | own team only | – |
-  | `GET/POST/PATCH/DELETE /customers` | yes | yes | yes | yes |
-  | `PATCH /users/me`, `/users/me/password` | yes | yes | yes | yes |
+  | Endpoint                                     | OWNER | ADMIN | TEAM_LEAD     | AGENT |
+  | -------------------------------------------- | ----- | ----- | ------------- | ----- |
+  | `GET /orgs/me`                               | yes   | yes   | yes           | yes   |
+  | `PATCH /orgs/me`                             | yes   | yes   | –             | –     |
+  | `GET /users`, `GET /users/:id`               | yes   | yes   | yes           | yes   |
+  | `POST/PATCH/DELETE /users`, `/role`, `/team` | yes   | yes   | –             | –     |
+  | `GET /teams`, `GET /teams/:id`               | yes   | yes   | yes           | yes   |
+  | `POST/DELETE /teams`, `PATCH` name/lead      | yes   | yes   | –             | –     |
+  | `PATCH /teams/:id/members`                   | yes   | yes   | own team only | –     |
+  | `GET/POST/PATCH/DELETE /customers`           | yes   | yes   | yes           | yes   |
+  | `PATCH /users/me`, `/users/me/password`      | yes   | yes   | yes           | yes   |
 
 - **Escalation guards:** only an `OWNER` may create an `OWNER`, grant the `OWNER`
   role, or change a user who is currently an `OWNER`; the last `OWNER` of an
@@ -183,31 +183,31 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 Append to `packages/auth/src/guards.spec.ts` inside the existing `describe('JwtAuthGuard', ...)` block:
 
 ```ts
-  it('accepts a lower-case bearer scheme', async () => {
-    const token = await jwt.signAsync({ sub: 'u1', org: 'o1', role: 'AGENT' });
-    const request: { headers: Record<string, string>; principal?: AuthPrincipal } = {
-      headers: { authorization: `bearer ${token}` },
-    };
-    await expect(guard.canActivate(contextFor(request))).resolves.toBe(true);
-    expect(request.principal).toEqual({ userId: 'u1', orgId: 'o1', role: 'AGENT' });
-  });
+it('accepts a lower-case bearer scheme', async () => {
+  const token = await jwt.signAsync({ sub: 'u1', org: 'o1', role: 'AGENT' });
+  const request: { headers: Record<string, string>; principal?: AuthPrincipal } = {
+    headers: { authorization: `bearer ${token}` },
+  };
+  await expect(guard.canActivate(contextFor(request))).resolves.toBe(true);
+  expect(request.principal).toEqual({ userId: 'u1', orgId: 'o1', role: 'AGENT' });
+});
 
-  it('rejects a token whose claims are not all strings', async () => {
-    const token = await jwt.signAsync({ sub: 'u1', org: 1, role: 'AGENT' });
-    await expect(
-      guard.canActivate(contextFor({ headers: { authorization: `Bearer ${token}` } })),
-    ).rejects.toBeInstanceOf(UnauthorizedException);
-  });
+it('rejects a token whose claims are not all strings', async () => {
+  const token = await jwt.signAsync({ sub: 'u1', org: 1, role: 'AGENT' });
+  await expect(
+    guard.canActivate(contextFor({ headers: { authorization: `Bearer ${token}` } })),
+  ).rejects.toBeInstanceOf(UnauthorizedException);
+});
 ```
 
 And add a no-principal case inside the existing `describe('RolesGuard', ...)` block:
 
 ```ts
-  it('forbids when a role is required but no principal is present', () => {
-    expect(() => guard.canActivate(contextFor({ principal: undefined }, adminHandler))).toThrow(
-      ForbiddenException,
-    );
-  });
+it('forbids when a role is required but no principal is present', () => {
+  expect(() => guard.canActivate(contextFor({ principal: undefined }, adminHandler))).toThrow(
+    ForbiddenException,
+  );
+});
 ```
 
 - [ ] **Step 2: Run to verify the new cases fail**
@@ -255,18 +255,18 @@ Replace the header parsing and claim handling in `packages/auth/src/jwt-auth.gua
 In `packages/auth/src/auth.module.ts`, add `global: true` to the returned `DynamicModule` so its exports are available app-wide:
 
 ```ts
-    return {
-      module: AuthModule,
-      global: true,
-      imports: [
-        JwtModule.register({
-          secret: options.secret,
-          signOptions: { expiresIn: options.expiresIn },
-        }),
-      ],
-      providers: [JwtAuthGuard, RolesGuard],
-      exports: [JwtAuthGuard, RolesGuard, JwtModule],
-    };
+return {
+  module: AuthModule,
+  global: true,
+  imports: [
+    JwtModule.register({
+      secret: options.secret,
+      signOptions: { expiresIn: options.expiresIn },
+    }),
+  ],
+  providers: [JwtAuthGuard, RolesGuard],
+  exports: [JwtAuthGuard, RolesGuard, JwtModule],
+};
 ```
 
 - [ ] **Step 5: Run to verify green**
@@ -445,18 +445,18 @@ import {
 ```
 
 ```ts
-    if (exception instanceof NotFoundError) {
-      response.status(404).json({ statusCode: 404, message: exception.message });
-      return;
-    }
-    if (exception instanceof ConflictError) {
-      response.status(409).json({ statusCode: 409, message: exception.message });
-      return;
-    }
-    if (exception instanceof ForbiddenActionError) {
-      response.status(403).json({ statusCode: 403, message: exception.message });
-      return;
-    }
+if (exception instanceof NotFoundError) {
+  response.status(404).json({ statusCode: 404, message: exception.message });
+  return;
+}
+if (exception instanceof ConflictError) {
+  response.status(409).json({ statusCode: 409, message: exception.message });
+  return;
+}
+if (exception instanceof ForbiddenActionError) {
+  response.status(403).json({ statusCode: 403, message: exception.message });
+  return;
+}
 ```
 
 - [ ] **Step 6: Write the filter unit test**
@@ -508,7 +508,7 @@ describe('DomainExceptionFilter', () => {
 In `apps/api/vitest.config.ts`, replace the `// Integration tests share one database; run files serially.` comment with:
 
 ```ts
-    // This suite's spec files share one database, so run them serially to avoid cross-file interference.
+// This suite's spec files share one database, so run them serially to avoid cross-file interference.
 ```
 
 In `apps/api/test/auth-login.spec.ts`, decode the token in the happy-path case. Add the import:
@@ -521,10 +521,10 @@ import type { AccessTokenClaims } from '@supportops/auth';
 and extend the "returns an access token for valid credentials" test to assert the claims:
 
 ```ts
-    const jwt = new JwtService({ secret: 'test-secret-at-least-16-chars' });
-    const claims = await jwt.verifyAsync<AccessTokenClaims>(res.body.accessToken);
-    expect(claims.org).toBeTypeOf('string');
-    expect(claims.role).toBe('AGENT');
+const jwt = new JwtService({ secret: 'test-secret-at-least-16-chars' });
+const claims = await jwt.verifyAsync<AccessTokenClaims>(res.body.accessToken);
+expect(claims.org).toBeTypeOf('string');
+expect(claims.role).toBe('AGENT');
 ```
 
 In `apps/api/test/auth-me.spec.ts`, add a cross-organization isolation case (a token whose `sub` and `org` belong to different organizations must not resolve a user). Add the imports:
@@ -536,29 +536,29 @@ import { JwtService } from '@nestjs/jwt';
 and the test inside the `describe('GET /auth/me', ...)` block:
 
 ```ts
-  it('returns 401 when the token org does not match the user', async () => {
-    const orgA = await prisma.organization.create({
-      data: { name: 'A', slug: 'a-org', timezone: 'UTC' },
-    });
-    const orgB = await prisma.organization.create({
-      data: { name: 'B', slug: 'b-org', timezone: 'UTC' },
-    });
-    const user = await prisma.user.create({
-      data: {
-        orgId: orgA.id,
-        email: 'ada@a.test',
-        name: 'Ada',
-        role: 'AGENT',
-        passwordHash: await hashPassword('s3cret-password'),
-      },
-    });
-    const jwt = new JwtService({ secret: 'test-secret-at-least-16-chars' });
-    const token = await jwt.signAsync({ sub: user.id, org: orgB.id, role: 'AGENT' });
-    const res = await request(app.getHttpServer())
-      .get('/auth/me')
-      .set('Authorization', `Bearer ${token}`);
-    expect(res.status).toBe(401);
+it('returns 401 when the token org does not match the user', async () => {
+  const orgA = await prisma.organization.create({
+    data: { name: 'A', slug: 'a-org', timezone: 'UTC' },
   });
+  const orgB = await prisma.organization.create({
+    data: { name: 'B', slug: 'b-org', timezone: 'UTC' },
+  });
+  const user = await prisma.user.create({
+    data: {
+      orgId: orgA.id,
+      email: 'ada@a.test',
+      name: 'Ada',
+      role: 'AGENT',
+      passwordHash: await hashPassword('s3cret-password'),
+    },
+  });
+  const jwt = new JwtService({ secret: 'test-secret-at-least-16-chars' });
+  const token = await jwt.signAsync({ sub: user.id, org: orgB.id, role: 'AGENT' });
+  const res = await request(app.getHttpServer())
+    .get('/auth/me')
+    .set('Authorization', `Bearer ${token}`);
+  expect(res.status).toBe(401);
+});
 ```
 
 - [ ] **Step 8: Run to verify green**
@@ -711,7 +711,12 @@ export class OrganizationsService {
     return this.toDto(org);
   }
 
-  private toDto(org: { id: string; name: string; slug: string; timezone: string }): OrganizationDto {
+  private toDto(org: {
+    id: string;
+    name: string;
+    slug: string;
+    timezone: string;
+  }): OrganizationDto {
     return { id: org.id, name: org.name, slug: org.slug, timezone: org.timezone };
   }
 }
@@ -989,9 +994,9 @@ describe('CustomersService', () => {
   it('rejects a duplicate email within the organization', async () => {
     const { acme } = await seedOrgs();
     await service.create(acme.id, { email: 'dup@x.test', name: 'One' });
-    await expect(service.create(acme.id, { email: 'dup@x.test', name: 'Two' })).rejects.toBeInstanceOf(
-      ConflictError,
-    );
+    await expect(
+      service.create(acme.id, { email: 'dup@x.test', name: 'Two' }),
+    ).rejects.toBeInstanceOf(ConflictError);
   });
 
   it('allows the same email in a different organization', async () => {
@@ -1044,8 +1049,8 @@ export class CustomersService {
     return paginate(query, {
       count: () => prisma.customer.count({ where }),
       findMany: async ({ skip, take }) =>
-        (await prisma.customer.findMany({ where, skip, take, orderBy: { email: 'asc' } })).map((c) =>
-          this.toDto(c),
+        (await prisma.customer.findMany({ where, skip, take, orderBy: { email: 'asc' } })).map(
+          (c) => this.toDto(c),
         ),
     });
   }
@@ -1128,10 +1133,7 @@ export class CustomersController {
   }
 
   @Get(':id')
-  get(
-    @CurrentOrg() orgId: string,
-    @Param('id', ParseUUIDPipe) id: string,
-  ): Promise<CustomerDto> {
+  get(@CurrentOrg() orgId: string, @Param('id', ParseUUIDPipe) id: string): Promise<CustomerDto> {
     return this.customers.get(orgId, id);
   }
 
@@ -1693,7 +1695,14 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { CurrentOrg, CurrentUser, JwtAuthGuard, Roles, RolesGuard, type AuthPrincipal } from '@supportops/auth';
+import {
+  CurrentOrg,
+  CurrentUser,
+  JwtAuthGuard,
+  Roles,
+  RolesGuard,
+  type AuthPrincipal,
+} from '@supportops/auth';
 import { PageQueryDto, type Paginated } from '../common/pagination.js';
 import { UsersService } from './users.service.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
@@ -1725,7 +1734,12 @@ export class UsersController {
     @CurrentUser() actor: AuthPrincipal,
     @Body() dto: ChangePasswordDto,
   ): Promise<void> {
-    return this.users.changePassword(actor.userId, actor.orgId, dto.currentPassword, dto.newPassword);
+    return this.users.changePassword(
+      actor.userId,
+      actor.orgId,
+      dto.currentPassword,
+      dto.newPassword,
+    );
   }
 
   @Get(':id')
@@ -2062,23 +2076,23 @@ import { AssignTeamDto } from './dto/assign-team.dto.js';
 Append to `apps/api/test/users.spec.ts` inside `describe('/users', ...)`:
 
 ```ts
-  it('forbids an admin from granting the owner role (403)', async () => {
-    const { token, orgId } = await seedAndLogin('ADMIN');
-    const target = await prisma.user.create({
-      data: {
-        orgId,
-        email: 'target@acme.test',
-        name: 'Target',
-        role: 'AGENT',
-        passwordHash: await hashPassword('s3cret-password'),
-      },
-    });
-    const res = await request(app.getHttpServer())
-      .patch(`/users/${target.id}/role`)
-      .set('Authorization', `Bearer ${token}`)
-      .send({ role: 'OWNER' });
-    expect(res.status).toBe(403);
+it('forbids an admin from granting the owner role (403)', async () => {
+  const { token, orgId } = await seedAndLogin('ADMIN');
+  const target = await prisma.user.create({
+    data: {
+      orgId,
+      email: 'target@acme.test',
+      name: 'Target',
+      role: 'AGENT',
+      passwordHash: await hashPassword('s3cret-password'),
+    },
   });
+  const res = await request(app.getHttpServer())
+    .patch(`/users/${target.id}/role`)
+    .set('Authorization', `Bearer ${token}`)
+    .send({ role: 'OWNER' });
+  expect(res.status).toBe(403);
+});
 ```
 
 - [ ] **Step 6: Run to verify fail, then pass**
@@ -2698,47 +2712,47 @@ import { ManageMembersDto } from './dto/manage-members.dto.js';
 Append to `apps/api/test/teams.spec.ts` inside `describe('/teams', ...)`:
 
 ```ts
-  it('confines a team lead to their own team over HTTP', async () => {
-    const { orgId } = await seedOwner();
-    const lead = await prisma.user.create({
-      data: {
-        orgId,
-        email: 'lead@acme.test',
-        name: 'Lead',
-        role: 'TEAM_LEAD',
-        passwordHash: await hashPassword('s3cret-password'),
-      },
-    });
-    const otherLead = await prisma.user.create({
-      data: {
-        orgId,
-        email: 'other-lead@acme.test',
-        name: 'Other',
-        role: 'TEAM_LEAD',
-        passwordHash: await hashPassword('s3cret-password'),
-      },
-    });
-    const theirs = await prisma.team.create({
-      data: { orgId, name: 'Theirs', leadUserId: otherLead.id },
-    });
-    const member = await prisma.user.create({
-      data: {
-        orgId,
-        email: 'm@acme.test',
-        name: 'M',
-        role: 'AGENT',
-        passwordHash: await hashPassword('s3cret-password'),
-      },
-    });
-    const login = await request(app.getHttpServer())
-      .post('/auth/login')
-      .send({ orgSlug: 'acme', email: 'lead@acme.test', password: 's3cret-password' });
-    const res = await request(app.getHttpServer())
-      .patch(`/teams/${theirs.id}/members`)
-      .set('Authorization', `Bearer ${login.body.accessToken}`)
-      .send({ add: [member.id] });
-    expect(res.status).toBe(403);
+it('confines a team lead to their own team over HTTP', async () => {
+  const { orgId } = await seedOwner();
+  const lead = await prisma.user.create({
+    data: {
+      orgId,
+      email: 'lead@acme.test',
+      name: 'Lead',
+      role: 'TEAM_LEAD',
+      passwordHash: await hashPassword('s3cret-password'),
+    },
   });
+  const otherLead = await prisma.user.create({
+    data: {
+      orgId,
+      email: 'other-lead@acme.test',
+      name: 'Other',
+      role: 'TEAM_LEAD',
+      passwordHash: await hashPassword('s3cret-password'),
+    },
+  });
+  const theirs = await prisma.team.create({
+    data: { orgId, name: 'Theirs', leadUserId: otherLead.id },
+  });
+  const member = await prisma.user.create({
+    data: {
+      orgId,
+      email: 'm@acme.test',
+      name: 'M',
+      role: 'AGENT',
+      passwordHash: await hashPassword('s3cret-password'),
+    },
+  });
+  const login = await request(app.getHttpServer())
+    .post('/auth/login')
+    .send({ orgSlug: 'acme', email: 'lead@acme.test', password: 's3cret-password' });
+  const res = await request(app.getHttpServer())
+    .patch(`/teams/${theirs.id}/members`)
+    .set('Authorization', `Bearer ${login.body.accessToken}`)
+    .send({ add: [member.id] });
+  expect(res.status).toBe(403);
+});
 ```
 
 - [ ] **Step 6: Run to verify fail, then pass**
