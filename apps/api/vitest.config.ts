@@ -1,9 +1,11 @@
 import swc from 'unplugin-swc';
 import { defineConfig } from 'vitest/config';
 
-const testDbUrl =
+const BASE =
   process.env.TEST_DATABASE_URL ??
   'postgres://supportops:supportops@localhost:5432/supportops_test';
+// Give the API integration suite its own database so it never shares mutable tables with the db package's tests.
+const testDbUrl = BASE.replace(/\/[^/?]+(\?|$)/, '/supportops_api_test$1');
 
 export default defineConfig({
   plugins: [swc.vite()],
