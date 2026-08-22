@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
+import { verify } from '@node-rs/argon2';
 import { testPrisma, resetDb } from './client.js';
 import { seed } from '../src/seed.js';
 
@@ -26,5 +27,12 @@ describe('seed', () => {
     await seed(testPrisma);
     await seed(testPrisma);
     expect(await testPrisma.organization.count({ where: { slug: 'acme' } })).toBe(1);
+  });
+
+  it('hashes real, verifiable passwords for seeded accounts', async () => {
+    await seed(testPrisma);
+    const owner = await testPrisma.user.findFirstOrThrow({ where: { email: 'owner@acme.test' } });
+    expect(owner.passwordHash).toMatch(/^\$argon2id\$/);
+    expect(await verify(owner.passwordHash, 'supportops-dev')).toBe(true);
   });
 });
