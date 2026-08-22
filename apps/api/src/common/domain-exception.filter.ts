@@ -1,5 +1,6 @@
 import { Catch, HttpException, type ArgumentsHost, type ExceptionFilter } from '@nestjs/common';
 import type { Response } from 'express';
+import { Prisma } from '@supportops/db';
 import {
   DomainError,
   InvalidCredentialsError,
@@ -37,6 +38,10 @@ export class DomainExceptionFilter implements ExceptionFilter {
     }
     if (exception instanceof DomainError) {
       response.status(400).json({ statusCode: 400, message: exception.message });
+      return;
+    }
+    if (exception instanceof Prisma.PrismaClientKnownRequestError && exception.code === 'P2002') {
+      response.status(409).json({ statusCode: 409, message: 'Resource already exists' });
       return;
     }
     // Unknown/unexpected: do not leak internals.

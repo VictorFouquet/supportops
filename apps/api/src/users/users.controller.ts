@@ -77,11 +77,11 @@ export class UsersController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('OWNER', 'ADMIN')
   update(
-    @CurrentOrg() orgId: string,
+    @CurrentUser() actor: AuthPrincipal,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateUserDto,
   ): Promise<UserDto> {
-    return this.users.updateProfile(orgId, id, dto);
+    return this.users.updateProfile(actor.orgId, actor.role, id, dto);
   }
 
   @Patch(':id/role')
@@ -99,11 +99,11 @@ export class UsersController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('OWNER', 'ADMIN')
   assignTeam(
-    @CurrentOrg() orgId: string,
+    @CurrentUser() actor: AuthPrincipal,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: AssignTeamDto,
   ): Promise<UserDto> {
-    return this.users.assignTeam(orgId, id, dto.teamId);
+    return this.users.assignTeam(actor.orgId, actor.role, id, dto.teamId);
   }
 
   @Delete(':id')

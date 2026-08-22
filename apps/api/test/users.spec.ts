@@ -93,4 +93,22 @@ describe('/users', () => {
       .send({ role: 'OWNER' });
     expect(res.status).toBe(403);
   });
+
+  it('forbids an admin from changing an owner’s email (403)', async () => {
+    const { token, orgId } = await seedAndLogin('ADMIN');
+    const owner = await prisma.user.create({
+      data: {
+        orgId,
+        email: 'owner@acme.test',
+        name: 'Owner',
+        role: 'OWNER',
+        passwordHash: await hashPassword('s3cret-password'),
+      },
+    });
+    const res = await request(app.getHttpServer())
+      .patch(`/users/${owner.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ email: 'owner-new@acme.test' });
+    expect(res.status).toBe(403);
+  });
 });

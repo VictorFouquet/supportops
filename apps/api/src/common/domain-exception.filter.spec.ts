@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { ArgumentsHost } from '@nestjs/common';
+import { Prisma } from '@supportops/db';
 import { DomainExceptionFilter } from './domain-exception.filter.js';
 import {
   NotFoundError,
@@ -33,5 +34,16 @@ describe('DomainExceptionFilter', () => {
     filter.catch(new Error('boom'), host);
     expect(res.status).toHaveBeenCalledWith(500);
     expect(res.json).toHaveBeenCalledWith({ statusCode: 500, message: 'Internal server error' });
+  });
+
+  it('maps a Prisma unique-constraint violation (P2002) to 409', () => {
+    const { res, host } = hostFor();
+    const error = new Prisma.PrismaClientKnownRequestError('dup', {
+      code: 'P2002',
+      clientVersion: 'test',
+    });
+    filter.catch(error, host);
+    expect(res.status).toHaveBeenCalledWith(409);
+    expect(res.json).toHaveBeenCalledWith({ statusCode: 409, message: 'Resource already exists' });
   });
 });

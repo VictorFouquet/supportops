@@ -54,8 +54,16 @@ export class UsersService {
     return mapUser(user);
   }
 
-  async updateProfile(orgId: string, id: string, dto: UpdateUserDto): Promise<UserDto> {
-    await this.getRow(orgId, id);
+  async updateProfile(
+    orgId: string,
+    actorRole: Role,
+    id: string,
+    dto: UpdateUserDto,
+  ): Promise<UserDto> {
+    const target = await this.getRow(orgId, id);
+    if (target.role === 'OWNER' && actorRole !== 'OWNER') {
+      throw new ForbiddenActionError('Only an owner may change an owner');
+    }
     if (dto.email) await this.assertEmailFree(orgId, dto.email, id);
     const user = await prisma.user.update({
       where: { id },
@@ -111,8 +119,16 @@ export class UsersService {
     return mapUser(user);
   }
 
-  async assignTeam(orgId: string, targetId: string, teamId: string | null): Promise<UserDto> {
-    await this.getRow(orgId, targetId);
+  async assignTeam(
+    orgId: string,
+    actorRole: Role,
+    targetId: string,
+    teamId: string | null,
+  ): Promise<UserDto> {
+    const target = await this.getRow(orgId, targetId);
+    if (target.role === 'OWNER' && actorRole !== 'OWNER') {
+      throw new ForbiddenActionError('Only an owner may change an owner');
+    }
     if (teamId !== null) await this.assertTeamInOrg(orgId, teamId);
     const user = await prisma.user.update({ where: { id: targetId }, data: { teamId } });
     return mapUser(user);

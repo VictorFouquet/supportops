@@ -165,8 +165,8 @@ describe('UsersService.assignTeam', () => {
       data: { orgId: acme.id, name: 'Support', leadUserId: lead.id },
     });
     const member = await user(acme.id, 'm@acme.test', 'AGENT');
-    expect((await service.assignTeam(acme.id, member.id, team.id)).teamId).toBe(team.id);
-    expect((await service.assignTeam(acme.id, member.id, null)).teamId).toBeNull();
+    expect((await service.assignTeam(acme.id, 'ADMIN', member.id, team.id)).teamId).toBe(team.id);
+    expect((await service.assignTeam(acme.id, 'ADMIN', member.id, null)).teamId).toBeNull();
   });
 
   it('rejects a team from another organization', async () => {
@@ -177,8 +177,53 @@ describe('UsersService.assignTeam', () => {
       data: { orgId: other.id, name: 'T', leadUserId: otherLead.id },
     });
     const member = await user(acme.id, 'm@acme.test', 'AGENT');
-    await expect(service.assignTeam(acme.id, member.id, otherTeam.id)).rejects.toBeInstanceOf(
-      NotFoundError,
+    await expect(
+      service.assignTeam(acme.id, 'ADMIN', member.id, otherTeam.id),
+    ).rejects.toBeInstanceOf(NotFoundError);
+  });
+
+  it('forbids a non-owner from reassigning a current owner’s team', async () => {
+    const acme = await org();
+    const owner2 = await user(acme.id, 'o2@acme.test', 'OWNER');
+    await user(acme.id, 'o1@acme.test', 'OWNER'); // keep two owners
+    const lead = await user(acme.id, 'lead@acme.test', 'TEAM_LEAD');
+    const team = await prisma.team.create({
+      data: { orgId: acme.id, name: 'Support', leadUserId: lead.id },
+    });
+    await expect(service.assignTeam(acme.id, 'ADMIN', owner2.id, team.id)).rejects.toBeInstanceOf(
+      ForbiddenActionError,
     );
+  });
+
+  it('lets an owner reassign a current owner’s team', async () => {
+    const acme = await org();
+    const owner2 = await user(acme.id, 'o2@acme.test', 'OWNER');
+    await user(acme.id, 'o1@acme.test', 'OWNER'); // keep two owners
+    const lead = await user(acme.id, 'lead@acme.test', 'TEAM_LEAD');
+    const team = await prisma.team.create({
+      data: { orgId: acme.id, name: 'Support', leadUserId: lead.id },
+    });
+    expect((await service.assignTeam(acme.id, 'OWNER', owner2.id, team.id)).teamId).toBe(team.id);
+  });
+});
+
+describe('UsersService.updateProfile', () => {
+  it('forbids a non-owner from changing a current owner’s profile', async () => {
+    const acme = await org();
+    const owner2 = await user(acme.id, 'o2@acme.test', 'OWNER');
+    await user(acme.id, 'o1@acme.test', 'OWNER'); // keep two owners
+    await expect(
+      service.updateProfile(acme.id, 'ADMIN', owner2.id, { email: 'new@acme.test' }),
+    ).rejects.toBeInstanceOf(ForbiddenActionError);
+  });
+
+  it('lets an owner change a current owner’s profile', async () => {
+    const acme = await org();
+    const owner2 = await user(acme.id, 'o2@acme.test', 'OWNER');
+    await user(acme.id, 'o1@acme.test', 'OWNER'); // keep two owners
+    const updated = await service.updateProfile(acme.id, 'OWNER', owner2.id, {
+      email: 'new@acme.test',
+    });
+    expect(updated.email).toBe('new@acme.test');
   });
 });
