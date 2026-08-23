@@ -6,6 +6,7 @@ import { OrganizationsModule } from './organizations/organizations.module.js';
 import { CustomersModule } from './customers/customers.module.js';
 import { UsersModule } from './users/users.module.js';
 import { TeamsModule } from './teams/teams.module.js';
+import { TicketsModule } from './tickets/tickets.module.js';
 
 @Module({})
 export class AppModule {
@@ -19,6 +20,7 @@ export class AppModule {
         CustomersModule.register(config),
         UsersModule.register(config),
         TeamsModule.register(config),
+        TicketsModule.register(config),
       ],
     };
   }
