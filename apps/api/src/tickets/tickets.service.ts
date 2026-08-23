@@ -1,10 +1,20 @@
 import { Injectable } from '@nestjs/common';
-import { prisma } from '@supportops/db';
-import { NotFoundError } from '../common/domain-errors.js';
+import { prisma, type TicketStatus } from '@supportops/db';
+import { ConflictError, NotFoundError } from '../common/domain-errors.js';
 import { paginate, type Paginated } from '../common/pagination.js';
 import { mapTicket, type TicketDto } from './dto/ticket.dto.js';
 import type { CreateTicketDto } from './dto/create-ticket.dto.js';
+import type { UpdateTicketDto } from './dto/update-ticket.dto.js';
+import type { AssignTicketDto } from './dto/assign-ticket.dto.js';
 import type { ListTicketsDto } from './dto/list-tickets.dto.js';
+
+/** The only legal status moves. A ticket may not jump along any other edge. */
+const LEGAL_TRANSITIONS: Record<TicketStatus, TicketStatus[]> = {
+  OPEN: ['PENDING', 'RESOLVED'],
+  PENDING: ['OPEN', 'RESOLVED'],
+  RESOLVED: ['OPEN', 'CLOSED'],
+  CLOSED: ['OPEN'],
+};
 
 @Injectable()
 export class TicketsService {
@@ -45,6 +55,42 @@ export class TicketsService {
         teamId: dto.teamId ?? null,
       },
     });
+    return mapTicket(ticket);
+  }
+
+  async update(orgId: string, id: string, dto: UpdateTicketDto): Promise<TicketDto> {
+    await this.getRow(orgId, id);
+    const ticket = await prisma.ticket.update({
+      where: { id },
+      data: { subject: dto.subject, description: dto.description, priority: dto.priority },
+    });
+    return mapTicket(ticket);
+  }
+
+  async assign(orgId: string, id: string, dto: AssignTicketDto): Promise<TicketDto> {
+    await this.getRow(orgId, id);
+    const data: { assigneeId?: string | null; teamId?: string | null } = {};
+    if (dto.assigneeId !== undefined) {
+      if (dto.assigneeId !== null) await this.assertUserInOrg(orgId, dto.assigneeId);
+      data.assigneeId = dto.assigneeId;
+    }
+    if (dto.teamId !== undefined) {
+      if (dto.teamId !== null) await this.assertTeamInOrg(orgId, dto.teamId);
+      data.teamId = dto.teamId;
+    }
+    const ticket = await prisma.ticket.update({ where: { id }, data });
+    return mapTicket(ticket);
+  }
+
+  async setStatus(orgId: string, id: string, to: TicketStatus): Promise<TicketDto> {
+    const current = await this.getRow(orgId, id);
+    if (!LEGAL_TRANSITIONS[current.status].includes(to)) {
+      throw new ConflictError(`Cannot move a ticket from ${current.status} to ${to}`);
+    }
+    const data: { status: TicketStatus; closedAt?: Date | null } = { status: to };
+    if (to === 'CLOSED') data.closedAt = new Date();
+    else if (current.status === 'CLOSED') data.closedAt = null;
+    const ticket = await prisma.ticket.update({ where: { id }, data });
     return mapTicket(ticket);
   }
 

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { prisma } from '@supportops/db';
 import { resetDb } from '../../test/db.js';
 import { TicketsService } from './tickets.service.js';
-import { NotFoundError } from '../common/domain-errors.js';
+import { ConflictError, NotFoundError } from '../common/domain-errors.js';
 
 const service = new TicketsService();
 
@@ -147,5 +147,105 @@ describe('TicketsService.get / list', () => {
     const byText = await service.list(acme.id, { page: 1, pageSize: 10, q: 'billing' });
     expect(byText.data).toHaveLength(1);
     expect(byText.data[0].subject).toBe('Billing question');
+  });
+});
+
+describe('TicketsService.update / assign', () => {
+  it('updates subject, description, and priority', async () => {
+    const { acme, customer } = await seed();
+    const t = await service.create(acme.id, {
+      customerId: customer.id,
+      subject: 'Old',
+      description: 'Old body',
+    });
+    const updated = await service.update(acme.id, t.id, {
+      subject: 'New',
+      priority: 'CRITICAL',
+    });
+    expect(updated).toMatchObject({
+      subject: 'New',
+      description: 'Old body',
+      priority: 'CRITICAL',
+    });
+  });
+
+  it('assigns and then unassigns via null', async () => {
+    const { acme, customer, agent, team } = await seed();
+    const t = await service.create(acme.id, {
+      customerId: customer.id,
+      subject: 'S',
+      description: 'D',
+    });
+    const assigned = await service.assign(acme.id, t.id, {
+      assigneeId: agent.id,
+      teamId: team.id,
+    });
+    expect(assigned).toMatchObject({ assigneeId: agent.id, teamId: team.id });
+
+    const cleared = await service.assign(acme.id, t.id, { assigneeId: null });
+    expect(cleared).toMatchObject({ assigneeId: null, teamId: team.id });
+  });
+
+  it('rejects assigning a user from another organization (404)', async () => {
+    const { acme, other, customer } = await seed();
+    const t = await service.create(acme.id, {
+      customerId: customer.id,
+      subject: 'S',
+      description: 'D',
+    });
+    const foreign = await prisma.user.create({
+      data: {
+        orgId: other.id,
+        email: 'f@other.test',
+        name: 'F',
+        role: 'AGENT',
+        passwordHash: 'x',
+      },
+    });
+    await expect(service.assign(acme.id, t.id, { assigneeId: foreign.id })).rejects.toBeInstanceOf(
+      NotFoundError,
+    );
+  });
+});
+
+describe('TicketsService.setStatus', () => {
+  async function openTicket() {
+    const { acme, customer } = await seed();
+    const t = await service.create(acme.id, {
+      customerId: customer.id,
+      subject: 'S',
+      description: 'D',
+    });
+    return { acme, id: t.id };
+  }
+
+  it('walks OPEN → RESOLVED → CLOSED, setting closedAt on close', async () => {
+    const { acme, id } = await openTicket();
+    await service.setStatus(acme.id, id, 'RESOLVED');
+    const closed = await service.setStatus(acme.id, id, 'CLOSED');
+    expect(closed.status).toBe('CLOSED');
+    expect(closed.closedAt).toBeInstanceOf(Date);
+  });
+
+  it('clears closedAt when a closed ticket is reopened', async () => {
+    const { acme, id } = await openTicket();
+    await service.setStatus(acme.id, id, 'RESOLVED');
+    await service.setStatus(acme.id, id, 'CLOSED');
+    const reopened = await service.setStatus(acme.id, id, 'OPEN');
+    expect(reopened.status).toBe('OPEN');
+    expect(reopened.closedAt).toBeNull();
+  });
+
+  it('rejects an illegal transition with ConflictError', async () => {
+    const { acme, id } = await openTicket(); // status OPEN
+    await expect(service.setStatus(acme.id, id, 'CLOSED')).rejects.toBeInstanceOf(ConflictError);
+  });
+
+  it('does not transition another organization ticket (404)', async () => {
+    const { id } = await openTicket();
+    const other = await prisma.organization.create({
+      data: { name: 'Z', slug: 'z-org', timezone: 'UTC' },
+    });
+    await expect(service.setStatus(other.id, id, 'PENDING')).rejects.toBeInstanceOf(NotFoundError);
   });
 });
