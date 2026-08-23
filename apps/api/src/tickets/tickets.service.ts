@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { prisma, type TicketStatus } from '@supportops/db';
+import { NotificationService } from '@supportops/notifications';
 import { ConflictError, NotFoundError } from '../common/domain-errors.js';
 import { paginate, type Paginated } from '../common/pagination.js';
 import { mapTicket, type TicketDto } from './dto/ticket.dto.js';
@@ -18,6 +19,8 @@ const LEGAL_TRANSITIONS: Record<TicketStatus, TicketStatus[]> = {
 
 @Injectable()
 export class TicketsService {
+  constructor(private readonly notifications: NotificationService) {}
+
   list(orgId: string, query: ListTicketsDto): Promise<Paginated<TicketDto>> {
     const where = {
       orgId,
@@ -55,6 +58,14 @@ export class TicketsService {
         teamId: dto.teamId ?? null,
       },
     });
+    if (ticket.assigneeId) {
+      await this.notifications.ticketAssigned({
+        orgId,
+        recipientUserId: ticket.assigneeId,
+        ticketId: ticket.id,
+        ticketSubject: ticket.subject,
+      });
+    }
     return mapTicket(ticket);
   }
 
@@ -68,7 +79,7 @@ export class TicketsService {
   }
 
   async assign(orgId: string, id: string, dto: AssignTicketDto): Promise<TicketDto> {
-    await this.getRow(orgId, id);
+    const before = await this.getRow(orgId, id);
     const data: { assigneeId?: string | null; teamId?: string | null } = {};
     if (dto.assigneeId !== undefined) {
       if (dto.assigneeId !== null) await this.assertUserInOrg(orgId, dto.assigneeId);
@@ -79,6 +90,15 @@ export class TicketsService {
       data.teamId = dto.teamId;
     }
     const ticket = await prisma.ticket.update({ where: { id }, data });
+    // Notify the assignee only when assignment changes to a new, non-null agent.
+    if (ticket.assigneeId && ticket.assigneeId !== before.assigneeId) {
+      await this.notifications.ticketAssigned({
+        orgId,
+        recipientUserId: ticket.assigneeId,
+        ticketId: ticket.id,
+        ticketSubject: ticket.subject,
+      });
+    }
     return mapTicket(ticket);
   }
 

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { prisma, type AuthorType } from '@supportops/db';
+import { NotificationService } from '@supportops/notifications';
 import { NotFoundError } from '../common/domain-errors.js';
 import { paginate, type Paginated, type PageQueryDto } from '../common/pagination.js';
 import { mapComment, type TicketCommentDto } from './dto/ticket-comment.dto.js';
@@ -7,6 +8,8 @@ import type { CreateTicketCommentDto } from './dto/create-ticket-comment.dto.js'
 
 @Injectable()
 export class TicketCommentsService {
+  constructor(private readonly notifications: NotificationService) {}
+
   async list(
     orgId: string,
     ticketId: string,
@@ -35,6 +38,15 @@ export class TicketCommentsService {
     const comment = await prisma.ticketComment.create({
       data: { ticketId, authorType, authorId, body: dto.body, isInternal: dto.isInternal ?? false },
     });
+    // Notify the assignee of new activity, unless they are the one who added it.
+    if (ticket.assigneeId && ticket.assigneeId !== actorUserId) {
+      await this.notifications.ticketCommented({
+        orgId,
+        recipientUserId: ticket.assigneeId,
+        ticketId: ticket.id,
+        ticketSubject: ticket.subject,
+      });
+    }
     return mapComment(comment);
   }
 

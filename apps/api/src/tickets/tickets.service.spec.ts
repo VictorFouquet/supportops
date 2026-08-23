@@ -1,10 +1,17 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { prisma } from '@supportops/db';
 import { resetDb } from '../../test/db.js';
+import type { NotificationService } from '@supportops/notifications';
 import { TicketsService } from './tickets.service.js';
 import { ConflictError, NotFoundError } from '../common/domain-errors.js';
 
-const service = new TicketsService();
+// This unit suite exercises ticket rules; notification emission is covered by the
+// notifications package and the API integration suite, so a no-op stand-in suffices.
+const notifications = {
+  ticketAssigned: async () => {},
+  ticketCommented: async () => {},
+} as unknown as NotificationService;
+const service = new TicketsService(notifications);
 
 beforeEach(resetDb);
 afterAll(async () => {
