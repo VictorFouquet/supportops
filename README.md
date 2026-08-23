@@ -8,6 +8,11 @@ customers, and tickets with comments, assignment, and email notifications.
 TypeScript monorepo (pnpm + Turborepo). NestJS API, Next.js web, Prisma + Postgres,
 BullMQ on Redis for background jobs.
 
+## Architecture
+
+See [`docs/architecture.md`](./docs/architecture.md) for how the monorepo fits together
+and where new code goes.
+
 ## Getting started
 
 ```bash
