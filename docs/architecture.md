@@ -33,6 +33,29 @@ Errors are thrown as typed domain errors and mapped to HTTP status codes by a gl
 exception filter, so services express meaning rather than transport concerns and no
 internal detail leaks to clients.
 
+## Domain surface
+
+The API manages a support desk's core records, each a feature module following the
+request-flow shape above:
+
+- **Organizations** — the tenant; the caller reads and updates its own organization.
+- **Users** — the agents who staff the desk, with roles, team membership, and
+  self-service profile and password changes.
+- **Teams** — groups of agents, each with a lead.
+- **Customers** — the people who raise tickets.
+- **Tickets** — the unit of work: created against a customer, optionally assigned to
+  an agent and/or team, and moved through a governed status lifecycle
+  (`OPEN` → `PENDING` → `RESOLVED` → `CLOSED`, with reopen) that maintains `closedAt`.
+  See [ADR 0011](./adr/0011-ticket-lifecycle-and-status-transitions.md).
+- **Ticket comments** — a ticket's thread. Every comment is written by an
+  authenticated agent, either as themselves or on the customer's behalf
+  (`authorType`), and may be flagged as an internal, agent-only note. See
+  [ADR 0012](./adr/0012-ticket-authorization-and-comments.md).
+
+Collection endpoints share one page-based envelope (`{ data, page, pageSize, total }`)
+with an optional `q` filter; the ticket list also filters by status, priority,
+assignee, and team.
+
 ## Authentication & authorization
 
 The API is stateless. `POST /auth/login` resolves the tenant by organization slug,

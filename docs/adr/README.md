@@ -21,3 +21,5 @@ with a new one rather than rewriting history.
 | 0008 | API framework and authorization guards          | Accepted |
 | 0009 | Authorization model and rule placement          | Accepted |
 | 0010 | List and pagination convention                  | Accepted |
+| 0011 | Ticket lifecycle and status transitions         | Accepted |
+| 0012 | Ticket authorization, assignment, and comments  | Accepted |
