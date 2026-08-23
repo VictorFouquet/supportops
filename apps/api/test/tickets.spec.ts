@@ -186,3 +186,66 @@ describe('/tickets/:id/comments', () => {
     expect(res.status).toBe(404);
   });
 });
+
+describe('ticket notifications', () => {
+  async function assign(token: string, ticketId: string, body: object): Promise<void> {
+    await request(app.getHttpServer())
+      .patch(`/tickets/${ticketId}/assignment`)
+      .set('Authorization', `Bearer ${token}`)
+      .send(body)
+      .expect(200);
+  }
+
+  it('records a TICKET_ASSIGNED notification when a ticket is assigned to an agent', async () => {
+    const { token, customerId, agentId } = await seedOrgWithAgent('acme');
+    const id = await createTicket(token, customerId);
+    await assign(token, id, { assigneeId: agentId });
+
+    const rows = await prisma.notification.findMany({ where: { type: 'TICKET_ASSIGNED' } });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ userId: agentId, status: 'PENDING', channel: 'EMAIL' });
+  });
+
+  it('does not notify on a team-only assignment', async () => {
+    const { token, customerId, orgId, agentId } = await seedOrgWithAgent('acme');
+    const team = await prisma.team.create({
+      data: { orgId, name: 'Support', leadUserId: agentId },
+    });
+    const id = await createTicket(token, customerId);
+    await assign(token, id, { teamId: team.id });
+    expect(await prisma.notification.count()).toBe(0);
+  });
+
+  it('notifies the assignee when someone else comments', async () => {
+    const { token, customerId, orgId } = await seedOrgWithAgent('acme');
+    const assignee = await prisma.user.create({
+      data: { orgId, email: 'lee@acme.test', name: 'Lee', role: 'AGENT', passwordHash: 'x' },
+    });
+    const id = await createTicket(token, customerId);
+    await assign(token, id, { assigneeId: assignee.id });
+
+    await request(app.getHttpServer())
+      .post(`/tickets/${id}/comments`)
+      .set('Authorization', `Bearer ${token}`) // caller is not the assignee
+      .send({ body: 'Any update?' })
+      .expect(201);
+
+    const rows = await prisma.notification.findMany({ where: { type: 'TICKET_COMMENTED' } });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ userId: assignee.id, status: 'PENDING' });
+  });
+
+  it('does not notify when the assignee comments on their own ticket', async () => {
+    const { token, customerId, agentId } = await seedOrgWithAgent('acme');
+    const id = await createTicket(token, customerId);
+    await assign(token, id, { assigneeId: agentId });
+    await prisma.notification.deleteMany(); // clear the assignment notification
+
+    await request(app.getHttpServer())
+      .post(`/tickets/${id}/comments`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ body: 'Working on it' })
+      .expect(201);
+    expect(await prisma.notification.count({ where: { type: 'TICKET_COMMENTED' } })).toBe(0);
+  });
+});
