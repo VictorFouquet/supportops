@@ -9,6 +9,7 @@ export class AuthModule {
   static register(options: { secret: string; expiresIn: string }): DynamicModule {
     return {
       module: AuthModule,
+      global: true,
       imports: [
         JwtModule.register({
           secret: options.secret,

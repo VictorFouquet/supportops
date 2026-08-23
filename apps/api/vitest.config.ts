@@ -14,7 +14,7 @@ export default defineConfig({
     include: ['src/**/*.spec.ts', 'test/**/*.spec.ts'],
     setupFiles: ['reflect-metadata'],
     globalSetup: ['./test/global-setup.ts'],
-    // Integration tests share one database; run files serially.
+    // This suite's spec files share one database, so run them serially to avoid cross-file interference.
     fileParallelism: false,
     env: {
       NODE_ENV: 'test',

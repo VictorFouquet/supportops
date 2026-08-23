@@ -1,7 +1,9 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 import request from 'supertest';
 import type { INestApplication } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { hashPassword } from '@supportops/auth';
+import type { AccessTokenClaims } from '@supportops/auth';
 import { prisma } from '@supportops/db';
 import { buildTestApp } from './app.js';
 import { resetDb } from './db.js';
@@ -40,6 +42,11 @@ describe('POST /auth/login', () => {
       .send({ orgSlug: 'acme', email: 'ada@acme.test', password: 's3cret-password' });
     expect(res.status).toBe(200);
     expect(typeof res.body.accessToken).toBe('string');
+
+    const jwt = new JwtService({ secret: 'test-secret-at-least-16-chars' });
+    const claims = await jwt.verifyAsync<AccessTokenClaims>(res.body.accessToken);
+    expect(claims.org).toBeTypeOf('string');
+    expect(claims.role).toBe('AGENT');
   });
 
   it('returns 401 for a wrong password', async () => {

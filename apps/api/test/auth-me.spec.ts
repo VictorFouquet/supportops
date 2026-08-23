@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 import request from 'supertest';
 import type { INestApplication } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { hashPassword } from '@supportops/auth';
 import { prisma } from '@supportops/db';
 import { buildTestApp } from './app.js';
@@ -57,6 +58,30 @@ describe('GET /auth/me', () => {
     const res = await request(app.getHttpServer())
       .get('/auth/me')
       .set('Authorization', 'Bearer not-a-real-token');
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 401 when the token org does not match the user', async () => {
+    const orgA = await prisma.organization.create({
+      data: { name: 'A', slug: 'a-org', timezone: 'UTC' },
+    });
+    const orgB = await prisma.organization.create({
+      data: { name: 'B', slug: 'b-org', timezone: 'UTC' },
+    });
+    const user = await prisma.user.create({
+      data: {
+        orgId: orgA.id,
+        email: 'ada@a.test',
+        name: 'Ada',
+        role: 'AGENT',
+        passwordHash: await hashPassword('s3cret-password'),
+      },
+    });
+    const jwt = new JwtService({ secret: 'test-secret-at-least-16-chars' });
+    const token = await jwt.signAsync({ sub: user.id, org: orgB.id, role: 'AGENT' });
+    const res = await request(app.getHttpServer())
+      .get('/auth/me')
+      .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(401);
   });
 });
