@@ -139,3 +139,50 @@ describe('/tickets', () => {
     expect(res.body.data[0].status).toBe('PENDING');
   });
 });
+
+describe('/tickets/:id/comments', () => {
+  it('adds an agent comment attributed to the caller and lists it', async () => {
+    const { token, customerId, agentId } = await seedOrgWithAgent('acme');
+    const id = await createTicket(token, customerId);
+
+    const created = await request(app.getHttpServer())
+      .post(`/tickets/${id}/comments`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ body: 'Looking into it' });
+    expect(created.status).toBe(201);
+    expect(created.body).toMatchObject({
+      authorType: 'AGENT',
+      authorId: agentId,
+      isInternal: false,
+    });
+
+    const list = await request(app.getHttpServer())
+      .get(`/tickets/${id}/comments`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(list.status).toBe(200);
+    expect(list.body).toMatchObject({ total: 1 });
+    expect(list.body.data[0].body).toBe('Looking into it');
+  });
+
+  it('records a customer-authored comment against the ticket customer', async () => {
+    const { token, customerId } = await seedOrgWithAgent('acme');
+    const id = await createTicket(token, customerId);
+    const res = await request(app.getHttpServer())
+      .post(`/tickets/${id}/comments`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ body: 'Forwarded from customer email', authorType: 'CUSTOMER' });
+    expect(res.status).toBe(201);
+    expect(res.body).toMatchObject({ authorType: 'CUSTOMER', authorId: customerId });
+  });
+
+  it('cannot comment on another organization ticket (404)', async () => {
+    const acme = await seedOrgWithAgent('acme');
+    const other = await seedOrgWithAgent('other');
+    const id = await createTicket(acme.token, acme.customerId);
+    const res = await request(app.getHttpServer())
+      .post(`/tickets/${id}/comments`)
+      .set('Authorization', `Bearer ${other.token}`)
+      .send({ body: 'peeking' });
+    expect(res.status).toBe(404);
+  });
+});
