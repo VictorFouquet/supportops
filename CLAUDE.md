@@ -30,3 +30,13 @@ preferences.
 
 - Files kebab-case; classes/types PascalCase; env vars SCREAMING_SNAKE.
 - One NestJS module per domain; `Controller → Service → Prisma`.
+
+## Background work
+
+- Background jobs go through `packages/queue` (BullMQ). Workers live in `workers/`.
+  Do not reach for a second scheduler or run background work inline in a request.
+- A notification is recorded (a `Notification` row) and then enqueued; delivery
+  happens in a worker through a `Transport`. A new notification kind registers a
+  `NotificationType` and is rendered in `packages/notifications`.
+- Emitting a notification is best-effort and must never fail the request that
+  triggered it: persist the row, then enqueue without awaiting the result.
