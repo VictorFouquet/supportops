@@ -23,3 +23,5 @@ with a new one rather than rewriting history.
 | 0010 | List and pagination convention                  | Accepted |
 | 0011 | Ticket lifecycle and status transitions         | Accepted |
 | 0012 | Ticket authorization, assignment, and comments  | Accepted |
+| 0013 | Asynchronous notifications via queue and worker | Accepted |
+| 0014 | Notification triggers and recipients            | Accepted |

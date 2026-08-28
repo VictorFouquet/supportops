@@ -12,7 +12,15 @@ background processors. Turborepo builds packages before the apps that depend on 
 - `packages/auth` — password hashing (argon2id), JWT verification, and the
   authorization primitives (`JwtAuthGuard`, `RolesGuard`, `@Roles`, `@CurrentUser`,
   `@CurrentOrg`). Framework-aware but domain-agnostic.
+- `packages/queue` — BullMQ-over-Redis plumbing: a typed job, a Redis connection
+  factory, and producer/worker factories. Knows nothing of the database or of how a
+  notification is delivered.
+- `packages/notifications` — the notification domain: a `Transport` interface with a
+  `ConsoleTransport`, a pure message renderer, a `NotificationService` that records a
+  notification and enqueues its delivery, and a `deliverNotification` consumer.
 - `apps/api` — the NestJS HTTP API.
+- `workers/notification-worker` — a background process that consumes delivery jobs and
+  sends each notification through the transport.
 
 ## Request flow
 
@@ -68,6 +76,19 @@ caller via `@CurrentUser()` / `@CurrentOrg()`. Every data access is organization
 
 Organizations are the tenant boundary. Tenant-scoped tables carry an indexed `org_id`,
 and every query filters by it; a user's email is unique only within their organization.
+
+## Notifications
+
+Notifications are delivered asynchronously so an agent action never waits on — or
+fails because of — message delivery. When a ticket is assigned to an agent or gains a
+comment, the service records a `Notification` row (status `PENDING`) and enqueues a
+delivery job carrying only that row's id. `workers/notification-worker` consumes the
+job, renders the message, sends it through a `Transport` (a console transport today,
+shaped so a real email transport drops in later), and marks the row `SENT` or
+`FAILED`. Recording the row is awaited; the enqueue is best-effort, so a Redis outage
+degrades notifications without affecting ticket work. See
+[ADR 0013](./adr/0013-asynchronous-notifications.md) and
+[ADR 0014](./adr/0014-notification-triggers-and-recipients.md).
 
 ## Testing
 
