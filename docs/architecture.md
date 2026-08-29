@@ -19,6 +19,7 @@ background processors. Turborepo builds packages before the apps that depend on 
   `ConsoleTransport`, a pure message renderer, a `NotificationService` that records a
   notification and enqueues its delivery, and a `deliverNotification` consumer.
 - `apps/api` — the NestJS HTTP API.
+- `apps/web` — the Next.js web client agents use to work tickets.
 - `workers/notification-worker` — a background process that consumes delivery jobs and
   sends each notification through the transport.
 
@@ -89,6 +90,25 @@ shaped so a real email transport drops in later), and marks the row `SENT` or
 degrades notifications without affecting ticket work. See
 [ADR 0013](./adr/0013-asynchronous-notifications.md) and
 [ADR 0014](./adr/0014-notification-triggers-and-recipients.md).
+
+## Web client
+
+`apps/web` is a Next.js App Router app and the only user-facing surface for the API;
+it is a separate deployable that talks to the API over HTTP, never sharing a process
+or a database connection with it. Two rules keep it thin:
+
+- **Reads go through server components**, which call a single server-side client
+  (`src/lib/http.ts` + `src/lib/api.ts`) as part of rendering the page. There is no
+  client-side data-fetching layer for the initial view.
+- **Mutations go through route handlers** under `apps/web/src/app/api/...`, which
+  call the API on the browser's behalf.
+
+The session is an httpOnly, `SameSite=Lax` cookie set by a login route handler after
+it calls the API's login endpoint. Server components and route handlers read the
+cookie and attach it as a `Bearer` header when calling the API; the browser never
+holds the token and never calls the API directly. See
+[ADR 0015](./adr/0015-web-client-next-app-router.md) and
+[ADR 0016](./adr/0016-session-httponly-cookie-bff.md).
 
 ## Testing
 

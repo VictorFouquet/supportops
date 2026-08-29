@@ -31,6 +31,16 @@ preferences.
 - Files kebab-case; classes/types PascalCase; env vars SCREAMING_SNAKE.
 - One NestJS module per domain; `Controller → Service → Prisma`.
 
+## Web
+
+- The web app talks to the API only from the server: server components read data,
+  route handlers under `apps/web/src/app/api/...` write it. The browser never calls
+  the API directly.
+- The session JWT lives in an httpOnly cookie. It is never exposed to client code or
+  `localStorage`.
+- All API calls go through `apps/web/src/lib`. Do not add a second client or a
+  browser-to-API request.
+
 ## Background work
 
 - Background jobs go through `packages/queue` (BullMQ). Workers live in `workers/`.
