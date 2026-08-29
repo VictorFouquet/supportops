@@ -54,4 +54,17 @@ describe('request', () => {
     ).rejects.toMatchObject({ name: 'ApiError', status: 400, body: { message: 'bad' } });
     expect(ApiError).toBeTypeOf('function');
   });
+
+  it('throws an ApiError carrying the raw body when the error response is not JSON', async () => {
+    const fetchMock = vi.fn(
+      async (..._args: Parameters<typeof fetch>) =>
+        new Response('<html>Bad Gateway</html>', { status: 502 }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(request('/tickets', { token: 'tok' })).rejects.toMatchObject({
+      name: 'ApiError',
+      status: 502,
+      body: '<html>Bad Gateway</html>',
+    });
+  });
 });

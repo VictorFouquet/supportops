@@ -37,7 +37,16 @@ export async function request<T>(path: string, opts: RequestOptions = {}): Promi
   });
 
   const text = await response.text();
-  const parsed: unknown = text ? JSON.parse(text) : undefined;
+  let parsed: unknown;
+  if (text) {
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      // Upstream can fail with a non-JSON body (e.g. a gateway's HTML error page); fall back
+      // to the raw text so callers still get the real status instead of a raw SyntaxError.
+      parsed = text;
+    }
+  }
   if (!response.ok) throw new ApiError(response.status, parsed);
   return parsed as T;
 }

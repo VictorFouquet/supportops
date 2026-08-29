@@ -3,23 +3,29 @@
 import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button.js';
+import { mutate } from '@/lib/mutate.js';
 
 export function CommentForm({ ticketId }: { ticketId: string }) {
   const router = useRouter();
   const [body, setBody] = useState('');
   const [isInternal, setIsInternal] = useState(false);
   const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!body.trim()) return;
+    setError(null);
     setPending(true);
-    await fetch(`/api/tickets/${ticketId}/comments`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ body, isInternal }),
+    const result = await mutate(`/api/tickets/${ticketId}/comments`, 'POST', {
+      body,
+      isInternal,
     });
     setPending(false);
+    if (!result.ok) {
+      setError('Could not post comment');
+      return;
+    }
     setBody('');
     setIsInternal(false);
     router.refresh();
@@ -37,6 +43,7 @@ export function CommentForm({ ticketId }: { ticketId: string }) {
         rows={3}
         className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
       />
+      {error && <p className="text-sm text-red-600">{error}</p>}
       <div className="flex items-center justify-between">
         <label className="flex items-center gap-2 text-sm text-slate-600">
           <input

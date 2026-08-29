@@ -24,4 +24,13 @@ describe('StatusControl', () => {
     );
     expect(refresh).toHaveBeenCalled();
   });
+
+  it('shows an error and does not refresh when the update fails', async () => {
+    const fetchMock = vi.fn(async () => new Response('{"error":"bad"}', { status: 409 }));
+    vi.stubGlobal('fetch', fetchMock);
+    render(<StatusControl ticketId="t1" status="OPEN" />);
+    await userEvent.selectOptions(screen.getByLabelText(/status/i), 'RESOLVED');
+    expect(await screen.findByText(/could not update status/i)).toBeInTheDocument();
+    expect(refresh).not.toHaveBeenCalled();
+  });
 });
