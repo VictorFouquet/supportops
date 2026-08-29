@@ -6,10 +6,12 @@ import { OrganizationsModule } from './organizations/organizations.module.js';
 import { CustomersModule } from './customers/customers.module.js';
 import { UsersModule } from './users/users.module.js';
 import { TeamsModule } from './teams/teams.module.js';
+import { TicketsModule } from './tickets/tickets.module.js';
+import type { NotificationsModuleOptions } from './notifications/notifications.module.js';
 
 @Module({})
 export class AppModule {
-  static register(config: AppConfig): DynamicModule {
+  static register(config: AppConfig, opts: NotificationsModuleOptions = {}): DynamicModule {
     return {
       module: AppModule,
       imports: [
@@ -19,6 +21,7 @@ export class AppModule {
         CustomersModule.register(config),
         UsersModule.register(config),
         TeamsModule.register(config),
+        TicketsModule.register(config, opts),
       ],
     };
   }

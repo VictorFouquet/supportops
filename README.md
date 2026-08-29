@@ -22,6 +22,14 @@ cp .env.example .env
 pnpm test
 ```
 
+The API runs on port 3000. To run the web app alongside it, copy
+[`apps/web/.env.example`](./apps/web/.env.example) to `apps/web/.env` (it points
+`API_URL` at the running API) and start it on port 3001:
+
+```bash
+pnpm --filter @supportops/web dev
+```
+
 ## Workspace
 
 - `apps/web` — Next.js front end

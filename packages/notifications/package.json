@@ -1,0 +1,24 @@
+{
+  "name": "@supportops/notifications",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@supportops/db": "workspace:*",
+    "@supportops/queue": "workspace:*"
+  },
+  "devDependencies": {
+    "pg": "^8.12.0",
+    "prisma": "^5.22.0",
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.5"
+  }
+}
