@@ -27,3 +27,4 @@ with a new one rather than rewriting history.
 | 0014 | Notification triggers and recipients                | Accepted |
 | 0015 | Web client: a separate Next.js App Router app       | Accepted |
 | 0016 | Session as an httpOnly cookie via a server-side BFF | Accepted |
+| 0017 | Handling an expired session in the web client       | Accepted |
