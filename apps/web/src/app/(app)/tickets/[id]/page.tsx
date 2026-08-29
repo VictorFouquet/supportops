@@ -3,6 +3,9 @@ import { getTicket, listComments, listCustomers, listUsers } from '@/lib/api.js'
 import { ApiError } from '@/lib/http.js';
 import { Badge } from '@/components/ui/badge.js';
 import { CommentThread } from '@/components/tickets/comment-thread.js';
+import { StatusControl } from '@/components/tickets/status-control.js';
+import { AssignControl } from '@/components/tickets/assign-control.js';
+import { CommentForm } from '@/components/tickets/comment-form.js';
 import { displayName, nameIndex } from '@/lib/lookups.js';
 
 export default async function TicketDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -38,6 +41,11 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
         </p>
       </header>
 
+      <section className="flex flex-wrap gap-6 rounded-md border border-slate-200 bg-white p-4">
+        <StatusControl ticketId={ticket.id} status={ticket.status} />
+        <AssignControl ticketId={ticket.id} assigneeId={ticket.assigneeId} agents={users.data} />
+      </section>
+
       <section className="rounded-md border border-slate-200 bg-white p-4">
         <p className="whitespace-pre-wrap text-sm text-slate-800">{ticket.description}</p>
       </section>
@@ -45,6 +53,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
       <section>
         <h2 className="mb-3 text-sm font-semibold text-slate-700">Comments</h2>
         <CommentThread comments={comments.data} authorNames={agents} />
+        <CommentForm ticketId={ticket.id} />
       </section>
     </article>
   );
